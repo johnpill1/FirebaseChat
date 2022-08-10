@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Firebase
 
 struct LoginView: View {
     
@@ -13,15 +14,20 @@ struct LoginView: View {
     @State var email = ""
     @State var password = ""
     
+    init() {
+        if FirebaseApp.app() == nil { FirebaseApp.configure()
+        }
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
                 
                 VStack(spacing: 16) {
                     Picker(selection: $isLogInMode, label: Text("Picker here")) {
-                            Text("Login")
+                        Text("Login")
                             .tag(true)
-                            Text("Create Account")
+                        Text("Create Account")
                             .tag(false)
                     }.pickerStyle(SegmentedPickerStyle())
                         .padding()
@@ -61,26 +67,72 @@ struct LoginView: View {
                             Spacer()
                         }.background(Color.blue)
                     }
+                    Text(self.loginStatusMessage).foregroundColor(.red)
                 }
                 .padding()
                 
             }
             .navigationTitle(isLogInMode ? "Log in" : "Create Account")
             .background(Color(.init(white: 0, alpha: 0.05))
-            .ignoresSafeArea())
+                            .ignoresSafeArea())
             
         }
-        
+        // .navigationViewStyle(StackNavigationViewStyle())
+    }
     
-        }
     private func handleAction() {
         if isLogInMode {
             print("Login to Firebase")
+            loginUser()
         } else {
             print("Create an account in Firebase")
+            createNewAccount()
         }
-        
     }
+    
+    @State var loginStatusMessage = ""
+    
+    
+    private func loginUser() {
+        Auth.auth().signIn(withEmail: email, password: password) {
+            result, err in
+            
+            if let err = err {
+                print("Failed to login user:", err)
+                self.loginStatusMessage = "Failed to login user: \(err)"
+                return
+            }
+            
+            print("Successefully logged in user: \(result?.user.uid ?? "")")
+            
+            self.loginStatusMessage = ("Successfully logged in user: \(result?.user.uid ?? "")")
+            
+        }
+    }
+    
+    
+    
+    
+    private func createNewAccount() {
+        Auth.auth().createUser(withEmail: email, password: password) {
+            result, err in
+            
+            if let err = err {
+                print("Failed to create user:", err)
+                self.loginStatusMessage = "Failed to create user: \(err)"
+                return
+            }
+            
+            print("Successefully creates user: \(result?.user.uid ?? "")")
+            
+            self.loginStatusMessage = ("Successfully created user: \(result?.user.uid ?? "")")
+            
+        }
+    }
+    
+    
+    
+    
 }
 
 struct ContentView_Previews: PreviewProvider {
