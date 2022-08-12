@@ -7,12 +7,16 @@
 
 import SwiftUI
 import Firebase
+import FirebaseStorage
 
 struct LoginView: View {
     
     @State var isLogInMode = false
     @State var email = ""
     @State var password = ""
+    
+    @State var shouldShowImagePicker = false
+    @State var image: UIImage?
     
     init() {
         if FirebaseApp.app() == nil { FirebaseApp.configure()
@@ -34,11 +38,27 @@ struct LoginView: View {
                     
                     if !isLogInMode {
                         Button {
+                            shouldShowImagePicker.toggle()
                             
                         } label: {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 64))
-                                .padding()
+                            VStack {
+                                if let image = self.image {    //If the image has been picked.
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .frame(width: 128, height: 128)
+                                        .scaledToFill()
+                                        .cornerRadius(64)
+                                } else {
+                                    Image(systemName: "person.fill")
+                                        .font(.system(size: 64))
+                                        .foregroundColor(Color(.label))
+                                        .padding()
+                                }
+                            }
+                            .overlay(RoundedRectangle(cornerRadius: 64)
+                                .stroke(Color.black, lineWidth: 3))
+                            
+                           
                         }
                     }
                     
@@ -77,8 +97,12 @@ struct LoginView: View {
                             .ignoresSafeArea())
             
         }
-        // .navigationViewStyle(StackNavigationViewStyle())
+        .navigationViewStyle(StackNavigationViewStyle())
+        .fullScreenCover(isPresented: $shouldShowImagePicker, onDismiss: nil) {
+            ImagePicker(image: $image)
+        }
     }
+    
     
     private func handleAction() {
         if isLogInMode {
@@ -126,13 +150,37 @@ struct LoginView: View {
             print("Successefully creates user: \(result?.user.uid ?? "")")
             
             self.loginStatusMessage = ("Successfully created user: \(result?.user.uid ?? "")")
+         
+            self.persistImageToStorage()
+          
+            }
             
         }
+    
+    
+    
+    private func persistImageToStorage() {
+       // let filename = UUID().uuidString
+        guard let uid = Auth.auth().currentUser?.uid
+            else { return }
+        let ref = Storage.storage().reference(withPath: uid)
+        guard let imageData = self.image?.jpegData(compressionQuality: 0.5) else { return }
+        
+        ref.putData(imageData, metadata: nil) { metadata, err in
+            if let err = err {
+            self.loginStatusMessage = "Failed to push image to Storage: \(err)"
+            return
+        
+            }
+            ref.downloadURL { url, err in
+                        if let err = err {
+                        self.loginStatusMessage = "Failed to download url: \(err)"
+                            return
+                        }
+                self.loginStatusMessage = "Successfully stored image: \(url?.absoluteString ?? "")"
+            }
+        }
     }
-    
-    
-    
-    
 }
 
 struct ContentView_Previews: PreviewProvider {
