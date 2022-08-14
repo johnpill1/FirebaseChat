@@ -196,10 +196,10 @@ struct LoginView: View {
                     print(err)
                     self.loginStatusMessage = "\(err)"
                     return
-                }
             }
-        
+        }
     }
+    
 }
 
 struct ContentView_Previews: PreviewProvider {
