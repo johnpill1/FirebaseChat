@@ -6,19 +6,84 @@
 //
 
 import SwiftUI
+import Firebase
+import FirebaseStorage
+import FirebaseFirestore
+import SDWebImageSwiftUI
+
+
+struct ChatUser {
+    let uid, email, profileImage: String
+}
+
+
+class MainMessagesViewModel: ObservableObject {
+    
+    @Published var errorMessage = ""
+    @Published var chatUser: ChatUser?
+    
+
+    init() {
+        fetchCurrentUser()
+    }
+    
+    private func fetchCurrentUser() {
+      
+        guard let uid = Auth.auth().currentUser?.uid else {
+            self.errorMessage = "Could not find firebase uid"
+            return
+            
+        }
+        
+        self.errorMessage = "\(uid)"
+        Firestore.firestore().collection("users").document(uid).getDocument { snapshot, error in
+            if let error = error {
+                self.errorMessage = "Failed to fetch current user: \(error)"
+                return
+            }
+            
+            guard let data = snapshot?.data() else {
+                self.errorMessage = "No data found"
+                return
+            }
+            
+            //self.errorMessage = "Data: \(data.description)"
+            
+            // Decode the user info to add into custom header.
+            let uid = data["uid"] as? String ?? ""
+            let email = data["email"] as? String ?? ""
+            let profileImage = data["profileImage"] as? String ?? ""
+            
+            self.chatUser = ChatUser(uid: uid, email: email, profileImage: profileImage)
+            
+            //self.errorMessage = chatUser.profileImage
+        }
+    }
+}
 
 struct MainMessagesView: View {
     
     @State var shouldShowLogOutOption = false
+    @ObservedObject private var vm = MainMessagesViewModel()
+    
     
     private var customeNavBar: some View {
         HStack(spacing: 16){
             
-            Image(systemName: "person.fill")
-                .font(.system(size: 34, weight: .heavy))
+            // Uses SDWebImageSwiftUI library from git hub.
+            WebImage(url: URL(string: vm.chatUser?.profileImage ?? ""))
+                .resizable()
+                .scaledToFill()
+                .frame(width: 50, height: 50)
+                .clipped()
+                .cornerRadius(50)
+                .overlay(RoundedRectangle(cornerRadius: 44) .stroke(Color(.label), lineWidth: 1))
+                .shadow(radius: 5)
+               
+            
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("Username")
+                Text("\(vm.chatUser?.email ?? "")")
                     .font(.system(size: 24, weight: .bold))
                 
                 HStack {
