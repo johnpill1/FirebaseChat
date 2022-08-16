@@ -12,22 +12,19 @@ import FirebaseFirestore
 import SDWebImageSwiftUI
 
 
-struct ChatUser {
-    let uid, email, profileImage: String
-}
-
-
 class MainMessagesViewModel: ObservableObject {
     
     @Published var errorMessage = ""
     @Published var chatUser: ChatUser?
     
-
     init() {
+        DispatchQueue.main.async {
+            self.isUserCurrentlyLoggedOut = Auth.auth().currentUser?.uid == nil
+        }
         fetchCurrentUser()
     }
     
-    private func fetchCurrentUser() {
+    func fetchCurrentUser() {
       
         guard let uid = Auth.auth().currentUser?.uid else {
             self.errorMessage = "Could not find firebase uid"
@@ -35,7 +32,7 @@ class MainMessagesViewModel: ObservableObject {
             
         }
         
-        self.errorMessage = "\(uid)"
+       
         Firestore.firestore().collection("users").document(uid).getDocument { snapshot, error in
             if let error = error {
                 self.errorMessage = "Failed to fetch current user: \(error)"
@@ -47,17 +44,27 @@ class MainMessagesViewModel: ObservableObject {
                 return
             }
             
+            self.chatUser = .init(data: data)
+            
             //self.errorMessage = "Data: \(data.description)"
             
             // Decode the user info to add into custom header.
-            let uid = data["uid"] as? String ?? ""
-            let email = data["email"] as? String ?? ""
-            let profileImage = data["profileImage"] as? String ?? ""
-            
-            self.chatUser = ChatUser(uid: uid, email: email, profileImage: profileImage)
+//            let uid = data["uid"] as? String ?? ""
+//            let email = data["email"] as? String ?? ""
+//            let profileImage = data["profileImage"] as? String ?? ""
+//
+//            self.chatUser = ChatUser(uid: uid, email: email, profileImage: profileImage)
             
             //self.errorMessage = chatUser.profileImage
         }
+    }
+    
+    @Published var isUserCurrentlyLoggedOut = false
+    
+    func handleSignOut() {
+        isUserCurrentlyLoggedOut.toggle()
+        try? Auth.auth().signOut()
+        
     }
 }
 
@@ -109,9 +116,15 @@ struct MainMessagesView: View {
                     Text("What do you want to do?"), buttons: [
                         .destructive(Text("Sign Out"), action: {
                             print("Handle sign out")
+                            vm.handleSignOut()
                         }),
                 .cancel()
             ])
+        } .fullScreenCover(isPresented: $vm.isUserCurrentlyLoggedOut, onDismiss: nil) {
+            LoginView(didCompleteLoginProcess: {
+                self.vm.isUserCurrentlyLoggedOut = false
+                self.vm.fetchCurrentUser()
+            }) // If user Logs out - go to log in page.
         }
     }
     

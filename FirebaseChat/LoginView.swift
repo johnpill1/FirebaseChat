@@ -12,17 +12,19 @@ import FirebaseFirestore
 
 struct LoginView: View {
     
-    @State var isLogInMode = false
-    @State var email = ""
-    @State var password = ""
+    let didCompleteLoginProcess: () -> ()
     
-    @State var shouldShowImagePicker = false
-    @State var image: UIImage?
+    @State private var isLogInMode = false
+    @State private var email = ""
+    @State private var password = ""
     
-    init() {
-        if FirebaseApp.app() == nil { FirebaseApp.configure()
-        }
-    }
+    @State private var shouldShowImagePicker = false
+    @State private var image: UIImage?
+    
+//    init() {
+//        if FirebaseApp.app() == nil { FirebaseApp.configure()
+//        }
+//    }
     
     var body: some View {
         NavigationView {
@@ -130,7 +132,9 @@ struct LoginView: View {
             
             print("Successefully logged in user: \(result?.user.uid ?? "")")
             
-            self.loginStatusMessage = ("Successfully logged in user: \(result?.user.uid ?? "")")
+            self.loginStatusMessage = "Successfully logged in user: \(result?.user.uid ?? "")"
+            
+            self.didCompleteLoginProcess()
             
         }
     }
@@ -139,6 +143,11 @@ struct LoginView: View {
     
     
     private func createNewAccount() {
+        
+        if self.image == nil {
+            self.loginStatusMessage = "You must select an avatar image!"
+        }
+        
         Auth.auth().createUser(withEmail: email, password: password) {
             result, err in
             
@@ -197,6 +206,8 @@ struct LoginView: View {
                     self.loginStatusMessage = "\(err)"
                     return
             }
+                
+                self.didCompleteLoginProcess()
         }
     }
     
@@ -204,6 +215,6 @@ struct LoginView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        LoginView()
+        LoginView(didCompleteLoginProcess: { } )
     }
 }
